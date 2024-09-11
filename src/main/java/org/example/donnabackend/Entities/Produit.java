@@ -1,9 +1,6 @@
 package org.example.donnabackend.Entities;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Data;
 
 @Entity
@@ -14,7 +11,7 @@ public class Produit
     private Long id;
     private String nom;
     private Long prix;
-    private String description;
-    private String image;
+    @Lob
+    private byte[] image;
 
 }
