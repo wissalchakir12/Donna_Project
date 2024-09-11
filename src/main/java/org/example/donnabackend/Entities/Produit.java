@@ -12,6 +12,7 @@ public class Produit
     private String nom;
     private Long prix;
     @Lob
+    @Column(columnDefinition = "MEDIUMBLOB")
     private byte[] image;
 
 }
