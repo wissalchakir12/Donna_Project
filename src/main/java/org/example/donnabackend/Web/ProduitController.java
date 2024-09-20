@@ -4,15 +4,12 @@ import org.example.donnabackend.Entities.Produit;
 import org.example.donnabackend.Repositories.ProduitRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.io.ByteArrayInputStream;
-import java.net.URLConnection;
+import java.util.Base64;
 import java.util.List;
 
 @CrossOrigin("*")
@@ -22,46 +19,37 @@ public class ProduitController {
     @Autowired
     private ProduitRepository produitRepository;
 
+    // Récupérer tous les produits
     @GetMapping("/produits")
     public List<Produit> produits() {
         return produitRepository.findAll();
     }
 
-    // New API endpoint to retrieve image by product ID
+    // Récupérer l'image d'un produit par ID et la renvoyer en base64
     @GetMapping("/produits/{id}/image")
-    public ResponseEntity<byte[]> getImage(@PathVariable Long id) {
+    public ResponseEntity<String> getImage(@PathVariable Long id) {
         try {
-            // Fetch the product from the repository
-            Produit produit = produitRepository.findById(id).orElseThrow(() -> new RuntimeException("Produit non trouvé"));
+            Produit produit = produitRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Produit non trouvé"));
 
-            // Assuming the image is stored as a BLOB in the "image" field of Produit
-            byte[] imageData = produit.getImage(); // Make sure there is a getter for the image field
+            byte[] imageData = produit.getImage();
+            if (imageData == null || imageData.length == 0) {
+                throw new RuntimeException("Image non trouvée pour ce produit.");
+            }
 
-            // Dynamically determine the content type of the image
-            String contentType = getContentType(imageData);
+            // Encoder l'image en base64
+            String base64Image = Base64.getEncoder().encodeToString(imageData);
 
-            // Return the image data as a response with appropriate headers
+            // Retourner l'image encodée en base64
             return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"image_" + id + "\"")
-                    .body(imageData);
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"image_" + id + ".jpg\"")
+                    .body(base64Image);
 
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Erreur : " + e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    // Helper method to determine the content type of the image
-    private String getContentType(byte[] imageData) {
-        try {
-            // Use URLConnection to guess the content type from the image byte array
-            ByteArrayInputStream bais = new ByteArrayInputStream(imageData);
-            String contentType = URLConnection.guessContentTypeFromStream(bais);
-
-            // Default to 'application/octet-stream' if content type is not detected
-            return contentType != null ? contentType : "application/octet-stream";
-        } catch (Exception e) {
-            return "application/octet-stream"; // Fallback content type
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erreur : " + e.getMessage());
         }
     }
 }
